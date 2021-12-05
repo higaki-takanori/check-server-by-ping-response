@@ -1,6 +1,8 @@
 from classes.log_class import Log, LogCollection
 
 LOGFILENAME = "ping.log"
+INDEX_TIMEOUT = 0
+INDEX_RESTIME = 1
 
 if __name__ == '__main__':
   logs = LogCollection()
@@ -8,15 +10,4 @@ if __name__ == '__main__':
     datetime, ipaddress, restime = line.split("\n")[0].split(",")
     logs.append(Log(datetime, ipaddress, restime))
 
-  errors = logs.get_errors()
-  print(errors)
-  for error, value in errors.items():
-    print(error, value)
-
-  print(logs.get_errors())
-
-  # for log in logs:
-  #   print(log.datetime - time)
-  #   print(time)
-  #   time = log.datetime
-  #   print(log.datetime, log.ipaddress, log.restime)
+  logs.show_errors()
