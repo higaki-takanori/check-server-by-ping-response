@@ -26,15 +26,15 @@ class Log:
 
 class LogCollection(list):
   def __init__(self):
-    self.times_timeout = {}
-    self.times_response = {}
+    self.datetimes_timeout = {}
+    self.datetimes_response = {}
     self.count_timeout = {}
 
-  def get_times_timeout(self):
-    return self.times_timeout
+  def get_datetimes_timeout(self):
+    return self.datetimes_timeout
 
-  def get_times_response(self):
-    return self.times_response
+  def get_datetimes_response(self):
+    return self.datetimes_response
 
   def append_times(self, log, dict):
     l = []
@@ -46,28 +46,31 @@ class LogCollection(list):
       dict[log.ipaddress] = l
     return dict
 
-  def update_times(self, num_continue=1):
-    self.times_timeout = {}
-    self.times_response = {}
+  def update_times(self):
+    self.datetimes_timeout = {}
+    self.datetimes_response = {}
     for log in self:
       if log.is_timeout():
-        self.times_timeout = self.append_times(log, self.times_timeout)
+        self.datetimes_timeout = self.append_times(log, self.datetimes_timeout)
       else:
-        self.times_response = self.append_times(log, self.times_response)
+        self.datetimes_response = self.append_times(log, self.datetimes_response)
+
+  def get_response_and_period(self, ipaddress, datetime_timeout):
+    if ipaddress in self.datetimes_response:
+      for datetime_response in self.datetimes_response[ipaddress]:
+        period_timeout = datetime_response - datetime_timeout
+        if period_timeout.days >= 0:  # タイムアウト後に復旧した場合
+          return datetime_response, period_timeout
+    return None, None
 
   def show_errors(self):
     self.update_times()
 
     period_timeout = None
-    for ipaddress, times_timeout in self.times_timeout.items(): # タイムアウトの時間
-      for time_timeout in times_timeout:
-        if ipaddress in self.times_response:
-          for time_response in self.times_response[ipaddress]:
-            period_timeout = time_response - time_timeout
-            if period_timeout.days >= 0:  # タイムアウト後に ping が通った場合
-              print(f"復旧済: {ipaddress} は {time_timeout} から{period_timeout}の間、故障していました。")
-              break
-          if period_timeout.days < 0:     # タイムアウト後に ping が通っていない場合
-            print(f"故障中: {ipaddress} は {time_timeout} から ping が timeout です。")
-        else:   #　全ての ping がタイムアウトの場合
-          print(f"故障中: {ipaddress} は {time_timeout} から ping が timeout です。")
+    for ipaddress, datetimes_timeout in self.datetimes_timeout.items(): # タイムアウトの時間
+      for datetime_timeout in datetimes_timeout:
+        datetime_response, period_timeout = self.get_response_and_period(ipaddress, datetime_timeout)
+        if datetime_response is None:
+          print(f"故障中: {ipaddress} は {datetime_timeout} から ping が timeout です。")
+        else:
+          print(f"復旧済: {ipaddress} は {datetime_timeout} から{period_timeout}の間、故障していました。")
