@@ -1,14 +1,40 @@
 from datetime import datetime as dt
+import re
+
+PATTERN_DATETIME = "[12]\d{3}" + "(0[1-9]|1[0-2])" + "(0[1-9]|[1-2]\d|3[0-1])" + "([0-1]\d|2[0-3])" + "[0-5]\d" + "[0-5]\d" # YYYYMMDDHHhhmmss
+PATTERN_IPADDRESS = "((\d{1,2}|1\d{0,2}|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d{0,2}|2[0-4]\d|25[0-5])" + "\/([1-9]|[1-2]\d|30)" # 0.0.0.0/1 ~ 255.255.255.255/30
+PATTERN_RESTIME = "(\d+)|-" # timeout は "-", 応答時間は 0 ~
 
 TIMESTR = "%Y%m%d%H%M%S"
-# INDEX_TIMEOUT = 0  # エラー辞書の配列のインデックス：故障時の日時
-# INDEX_RESTIME = 1  # エラー辞書の配列のインデックス：復旧時の日時
+
+# IS_VISUABLE_MISS_FORMAT
+# True: LOGFILENAMEにあるログの形式ミスを表示する
+# False:LOGFILENAMEにあるログの形式ミスを表示しない
+IS_VISUABLE_MISS_FORMAT = True
+
+def check_format(datetime, ipaddress, restime, visuable=True):
+  check_datetime = re.fullmatch(PATTERN_DATETIME, datetime)
+  check_ipaddress = re.fullmatch(PATTERN_IPADDRESS, ipaddress)
+  check_restime = re.fullmatch(PATTERN_RESTIME, restime)
+  is_correct_format = True
+  if check_datetime is None:
+    print(f"{datetime} は適切な形式ではありません。") if visuable else None
+    is_correct_format = False
+  if check_ipaddress is None:
+    print(f"{ipaddress} は適切な形式ではありません。") if visuable else None
+    is_correct_format = False
+  if check_restime is None:
+    print(f"{restime} は適切な形式ではありません。") if visuable else None
+    is_correct_format = False
+  return is_correct_format
 
 class Log:
   def __init__(self, datetime, ipaddress, restime):
-    self.datetime = dt.strptime(datetime, TIMESTR)
-    self.ipaddress = ipaddress
-    self.restime = restime
+    is_correct_format = check_format(datetime, ipaddress, restime, IS_VISUABLE_MISS_FORMAT)
+    if is_correct_format:
+      self.datetime = dt.strptime(datetime, TIMESTR) if type(datetime) is not dt else datetime
+      self.ipaddress = ipaddress
+      self.restime = restime
 
   def is_timeout(self):
     if self.restime == '-':
@@ -87,6 +113,6 @@ class LogCollection(list):
           if datetime_response is None:
             print(f"故障中: {ipaddress} は {datetime_timeout} から ping が timeout です。")
           else:
-            print(f"復旧済: {ipaddress} は {datetime_timeout} から{period_timeout}の間、故障していました。")
+            print(f"復旧済: {ipaddress} は {datetime_timeout} から{period_timeout}の時間、故障していました。")
       if self.is_recovered(ipaddress):
         self.count_timeout[ipaddress] = 0
