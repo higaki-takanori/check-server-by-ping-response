@@ -46,7 +46,7 @@ class LogCollection(list):
       dict[log.ipaddress] = l
     return dict
 
-  def update_times(self):
+  def update_datetimes(self):
     self.datetimes_timeout = {}
     self.datetimes_response = {}
     for log in self:
@@ -63,14 +63,30 @@ class LogCollection(list):
           return datetime_response, period_timeout
     return None, None
 
-  def show_errors(self):
-    self.update_times()
+  def is_recovered(self, ipaddress):
+    if ipaddress not in self.datetimes_response:
+      return False
+    elif self.datetimes_timeout[ipaddress][-1] > self.datetimes_response[ipaddress][-1]: # 最終的に復旧していない
+      return False
+    else:
+      return True
 
-    period_timeout = None
-    for ipaddress, datetimes_timeout in self.datetimes_timeout.items(): # タイムアウトの時間
+  def show_errors(self, conti_timeout_error=1):
+    self.update_datetimes()
+    for ipaddress, datetimes_timeout in self.datetimes_timeout.items():
+      before_response = None
       for datetime_timeout in datetimes_timeout:
-        datetime_response, period_timeout = self.get_response_and_period(ipaddress, datetime_timeout)
-        if datetime_response is None:
-          print(f"故障中: {ipaddress} は {datetime_timeout} から ping が timeout です。")
+        datetime_response, period_timeout = self.get_response_and_period(ipaddress, datetime_timeout) # 復旧日時と故障期間の取得
+        if before_response == datetime_response:  # datetime_response が前回と同じ場合、連続したタイムアウトとなる
+          self.count_timeout[ipaddress] = 1 if ipaddress not in self.count_timeout else self.count_timeout[ipaddress] + 1
         else:
-          print(f"復旧済: {ipaddress} は {datetime_timeout} から{period_timeout}の間、故障していました。")
+          before_response = datetime_response
+          self.count_timeout[ipaddress] = 1
+        count_now_timeout = 1 if ipaddress not in self.count_timeout else self.count_timeout[ipaddress]
+        if count_now_timeout >= conti_timeout_error:
+          if datetime_response is None:
+            print(f"故障中: {ipaddress} は {datetime_timeout} から ping が timeout です。")
+          else:
+            print(f"復旧済: {ipaddress} は {datetime_timeout} から{period_timeout}の間、故障していました。")
+      if self.is_recovered(ipaddress):
+        self.count_timeout[ipaddress] = 0

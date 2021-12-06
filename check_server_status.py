@@ -10,4 +10,5 @@ if __name__ == '__main__':
     datetime, ipaddress, restime = line.split("\n")[0].split(",")
     logs.append(Log(datetime, ipaddress, restime))
 
-  logs.show_errors()
+  conti_timeout_error = 2
+  logs.show_errors(conti_timeout_error)
