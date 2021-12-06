@@ -18,7 +18,7 @@ if __name__ == '__main__':
       try:
         logs.append(Log(datetime, ipaddress, restime))
       except:
-        print(f"{datetime} は存在しません") if IS_VISUABLE_MISS_FORMAT else None # ping の送信日時が 1~31日 までない月の 29~31日を彈く 例）2月31日は存在しないため、彈く
+        print(f"{datetime} は存在しません") if IS_VISUABLE_MISS_FORMAT else None # 存在しない日にちは受け付けない 例）2 月 31 日は存在ため、受け付けない
 
   conti_timeout_error = 2
   logs.show_errors(conti_timeout_error)
