@@ -59,11 +59,31 @@ class Log:
     address = self.ipaddress.split('/')[0]
     return address
 
+  def get_network_address(self):
+    subnet = self.get_subnet()
+    ipaddress = self.get_address()
+    ipaddress = ipaddress.split(".")
+    syo = int(subnet) // 8
+    amari = int(subnet) % 8
+    network_address = []
+    for i, address in enumerate(ipaddress):
+      if i < syo:
+        network_address.append(address)
+      elif i == syo:
+        shifted_address = int(address) >> amari
+        network_address.append(str(int(address) - shifted_address))
+      else:
+        network_address.append("0")
+    return network_address
+
 class LogCollection(list):
   def __init__(self):
     self.times_timeout = {}
     self.times_response = {}
     self.count_timeout = {}
+    self.subnet_timeout = {}
+    self.subnet_response = {}
+    self.subnet_count_timeout = {}
 
   def get_times_timeout(self):
     return self.times_timeout
@@ -110,9 +130,9 @@ class LogCollection(list):
   def show_errors(self, conti_timeout_error=1):
     print("---故障一覧を表示---")
     self.update_datetimes()
-    for ipaddress, times_timeout in self.times_timeout.items():
+    for ipaddress, times_timeout_list in self.times_timeout.items():
       before_response = None
-      for datetime_timeout in times_timeout[INDEX_DATETIME]:
+      for datetime_timeout in times_timeout_list[INDEX_DATETIME]:
         datetime_response, period_timeout = self.get_response_and_period(ipaddress, datetime_timeout) # 復旧日時と故障期間の取得
         if before_response == datetime_response:  # datetime_response が前回と同じ場合、連続したタイムアウトとなる
           self.count_timeout[ipaddress] = 1 if ipaddress not in self.count_timeout else self.count_timeout[ipaddress] + 1
@@ -131,18 +151,76 @@ class LogCollection(list):
   def show_overload(self, last_overload=1, mtime_overload=10, do_less_last_overload=True):
     print("---過負荷状態一覧を表示---")
     self.update_datetimes()
-    for ipaddress, times_response in self.times_response.items():
+    for ipaddress, times_response_list in self.times_response.items():
       sum_restime_overload = 0
       ave_restime_overload = 0
       if do_less_last_overload:
-        last_overload = len(times_response[INDEX_RESTIME]) if last_overload > len(times_response[INDEX_RESTIME]) else last_overload
+        last_overload = len(times_response_list[INDEX_RESTIME]) if last_overload > len(times_response_list[INDEX_RESTIME]) else last_overload
       else:
-        if last_overload > len(times_response[INDEX_RESTIME]):
+        if last_overload > len(times_response_list[INDEX_RESTIME]):
           continue
-      for i, (restime, datetime_response) in enumerate(zip(reversed(times_response[INDEX_RESTIME]), reversed(times_response[INDEX_DATETIME]))):
+      for i, (restime, datetime_response) in enumerate(zip(reversed(times_response_list[INDEX_RESTIME]), reversed(times_response_list[INDEX_DATETIME]))):
         sum_restime_overload += int(restime)
         if last_overload <= i + 1:
           break
       ave_restime_overload = sum_restime_overload / last_overload
       if mtime_overload < ave_restime_overload:
         print(f"{ipaddress} は {datetime_response} から過負荷状態です")
+
+  def update_subnets(self):
+    self.subnet_timeout = {}
+    self.subnet_response = {}
+    for log in self:
+      network_address = ".".join(log.get_network_address())
+      if log.is_timeout():
+        self.subnet_timeout[network_address] = {} if network_address not in self.subnet_timeout else self.subnet_timeout[network_address]
+        self.subnet_timeout[network_address] = self.append_datetimes(log, self.subnet_timeout[network_address])
+      else:
+        self.subnet_response[network_address] = {} if network_address not in self.subnet_response else self.subnet_response[network_address]
+        self.subnet_response[network_address] = self.append_datetimes(log, self.subnet_response[network_address])
+
+  def get_period_subnet_error(self, conti_timeout_error):
+    period_subnet_error = {}
+    for network_address, times_timeout in self.subnet_timeout.items():
+      period_subnet_error[network_address] = {}
+      for ipaddress, times_timeout_list in times_timeout.items():
+        before_response = None
+        for datetime_timeout in times_timeout_list[INDEX_DATETIME]:
+          datetime_response, period_timeout = self.get_response_and_period(ipaddress, datetime_timeout) # 復旧日時と故障期間の取得
+          if before_response == datetime_response:  # datetime_response が前回と同じ場合、連続したタイムアウトとなる
+            self.subnet_count_timeout[ipaddress] = 1 if ipaddress not in self.subnet_count_timeout else self.subnet_count_timeout[ipaddress] + 1
+          else:
+            before_response = datetime_response
+            self.subnet_count_timeout[ipaddress] = 1
+          count_now_timeout = 1 if ipaddress not in self.subnet_count_timeout else self.subnet_count_timeout[ipaddress]
+          if count_now_timeout >= conti_timeout_error:
+            if ipaddress not in period_subnet_error[network_address]:
+              period_subnet_error[network_address][ipaddress] = [[datetime_timeout, datetime_response]]
+            else:
+              period_subnet_error[network_address][ipaddress].append([datetime_timeout, datetime_response])
+    return period_subnet_error
+
+  def show_subnet_error(self, conti_timeout_error=1):
+    print("---サブネットの故障一覧を表示---")
+    self.update_subnets()
+    period_subnet_error = {}
+    period_subnet_error =  self.get_period_subnet_error(conti_timeout_error)
+    # print(period_subnet_error)
+    for network_address, periods_error in period_subnet_error.items():
+      print(f"---{network_address}---")
+      for ipaddress, datetimes in periods_error.items():
+        print(f"ipaddress: {ipaddress}")
+        print("   故障開始時間   ｜   故障終了時間   ")
+        for start_time1, end_time1 in datetimes:
+          print(f"{start_time1}| {end_time1}")
+
+  def compare_period(self, start_time1, end_time1, start_time2, end_time2):
+    start_time = None
+    end_time = None
+    if end_time1 < start_time2:
+      start_time = None
+      end_time = None
+    elif start_time2 < end_time1:
+      start_time = start_time2 if start_time1 < start_time2 else start_time1
+      end_time = end_time1 if end_time1 < end_time2 else end_time2
+    return start_time, end_time
