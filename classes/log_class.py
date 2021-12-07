@@ -205,7 +205,6 @@ class LogCollection(list):
     self.update_subnets()
     period_subnet_error = {}
     period_subnet_error =  self.get_period_subnet_error(conti_timeout_error)
-    # print(period_subnet_error)
     for network_address, periods_error in period_subnet_error.items():
       print(f"---{network_address}---")
       for ipaddress, datetimes in periods_error.items():
