@@ -44,6 +44,8 @@ if __name__ == '__main__':
 
 ### main 関数の処理
 
+#### LogCollection インスタンスの作成
+
 list クラスを継承した LogColloction クラスのインスタンスを作成。
 
 ログファイルごとに処理できるように、クラスを作成した。
@@ -51,6 +53,8 @@ list クラスを継承した LogColloction クラスのインスタンスを作
 ```
 logs = LogCollection()
 ```
+
+#### Log インスタンスの作成及び LogCollection への追加
 
 ログファイルからログの情報を入手し、1 つのログに対して、1 つの Log クラスのインスタンスを作成し、LogCollection インスタンスへ追加する。
 
@@ -67,6 +71,8 @@ for line in open(LOGFILENAME, "r"):
       else:
         del log
 ```
+
+#### 各サーバの故障一覧
 
 logs.show_errors 関数で各サーバの故障一覧を表示する。
 
@@ -100,6 +106,8 @@ logs.show_errors(conti_timeout_error)
 
 ```
 
+#### 各サーバの過負荷状態一覧
+
 logs.show_overload 関数で各サーバの過負荷状態一覧を表示する。
 
 その際、引数(last_overload)は「直近 last_overload 回の平均応答時間を取得」
@@ -123,6 +131,8 @@ logs.show_overload(last_overload, mtime_overload, DO_LESS_LAST_OVERLOAD)
 192.168.1.2/24 は 2020-10-19 13:32:35 から過負荷状態です
 192.168.255.1/22 は 2020-10-30 21:59:39 から過負荷状態です
 ```
+
+#### 各サブネット毎の故障期間一覧
 
 logs.show_subnet_error は、各サブネット毎の故障期間を表示する関数。
 
