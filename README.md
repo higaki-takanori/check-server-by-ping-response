@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
 #### LogCollection インスタンスの作成
 
-list クラスを継承した LogColloction クラスのインスタンスを作成。
+list クラスを継承した [LogColloction クラス](#LogCollection-クラス)のインスタンスを作成。
 
 ログファイルごとに処理できるように、クラスを作成した。
 
@@ -56,7 +56,7 @@ logs = LogCollection()
 
 #### Log インスタンスの作成及び LogCollection への追加
 
-ログファイルからログの情報を入手し、1 つのログに対して、1 つの Log クラスのインスタンスを作成し、LogCollection インスタンスへ追加する。
+ログファイルからログの情報を入手し、1 つのログに対して、1 つの [Log クラス](#Log-クラス)のインスタンスを作成し、LogCollection インスタンスへ追加する。
 
 追加する前に、形式チェックを行い誤ったものは追加しない。
 
