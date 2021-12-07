@@ -234,6 +234,50 @@ DO_LESS_LAST_OVERLOAD を False にすると、A サーバは直近 3 回しか 
 DO_LESS_LAST_OVERLOAD = False
 ```
 
+## Log クラス
+
+### インスタンス変数
+
+- datetime : ping の送信日時
+- ipaddress : IP アドレス
+- restime : 応答時間
+
+### is_timeout 関数
+
+自身がタイムアウトかどうかを返す関数
+
+返り値）
+
+True : タイムアウトしている
+
+False : タイムアウトしていない
+
+### get_network_address 関数
+
+自身のネットワークアドレスを返す関数
+
+例）
+
+192.168.255.20/22 : 自身のアドレス
+
+返り値 : 192.168.252.0
+
+## LogCollection クラス
+
+Log クラス扱うためのクラス
+
+### show_errors 関数
+
+各サーバの故障一覧及び故障期間を表示する関数
+
+### show_overload 関数
+
+各サーバの過負荷状態を表示する関数
+
+### show_subnet_error 関数
+
+各サブネットの故障一覧及び故障期間を表示する関数
+
 ## テストデータ
 
 [テストデータ](/ping.log)
