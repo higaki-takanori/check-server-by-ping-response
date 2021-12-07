@@ -234,6 +234,10 @@ DO_LESS_LAST_OVERLOAD を False にすると、A サーバは直近 3 回しか 
 DO_LESS_LAST_OVERLOAD = False
 ```
 
+## テストデータ
+
+[テストデータ](#ping.log)
+
 ## 想定したログエラー
 
 ### 送信日時
