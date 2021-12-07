@@ -207,11 +207,21 @@ IS_VISUABLE_MISS_FORMAT = True
 
 直近 m 回の平均応答時間を求める際に、ping が n(< m) 回の場合、以下のオプションを True にすることで直近 n 回の平均応答時間を求める。
 
+例）
+
+直近 5 回の平均応答時間を求めたい。
+
+しかし、A サーバは ping は 3 回しか通っていない。
+
+DO_LESS_LAST_OVERLOAD を True にすると、A サーバは直近 3 回の平均応答時間を求める。
+
+DO_LESS_LAST_OVERLOAD を False にすると、A サーバは直近 3 回しか ping が通っていないため、平均応答時間を求めない。
+
 ```
-# do_less_last_overload
+# DO_LESS_LAST_OVERLOAD
 # True: 直近のping回数が少なくても合わせて実行
 # False: 直近のping回数が少ない場合、過負荷状態を検出しない
-do_less_last_overload = False
+DO_LESS_LAST_OVERLOAD = False
 ```
 
 ## 想定したログエラー
