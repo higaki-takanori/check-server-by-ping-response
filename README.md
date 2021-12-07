@@ -45,6 +45,7 @@ if __name__ == '__main__':
 ### main 関数の処理
 
 list クラスを継承した LogColloction クラスのインスタンスを作成。
+
 ログファイルごとに処理できるように、クラスを作成した。
 
 ```
@@ -52,6 +53,7 @@ logs = LogCollection()
 ```
 
 ログファイルからログの情報を入手し、1 つのログに対して、1 つの Log クラスのインスタンスを作成し、LogCollection インスタンスへ追加する。
+
 追加する前に、形式チェックを行い誤ったものは追加しない。
 
 ```
@@ -66,7 +68,9 @@ for line in open(LOGFILENAME, "r"):
         del log
 ```
 
-logs.show_errors 関数で各サーバの故障一覧を表示する。その際に引数(conti_timeout_error)に数値を入れることで timeout 連続によるエラーを再現している。
+logs.show_errors 関数で各サーバの故障一覧を表示する。
+
+その際に引数(conti_timeout_error)に数値を入れることで timeout 連続によるエラーを再現している。
 
 ```
 conti_timeout_error = 2 # conti_timeout_error 回 timeout が連続すれば、故障とする
@@ -96,9 +100,15 @@ logs.show_errors(conti_timeout_error)
 
 ```
 
-logs.show_overload 関数で各サーバの過負荷状態一覧を表示する。その際、引数(last_overload)は「直近 last_overload 回の平均応答時間を取得」、引数(mtime_overload)は「平均応答時間が mtime_overload ミリ秒以上となった場合、過負荷状態」の役割を持つ。
+logs.show_overload 関数で各サーバの過負荷状態一覧を表示する。
 
-DO_LESS_LAST_OVERLOAD は[参照](#過負荷状態の検出の際に直近の ping 回数が少ない場合)
+その際、引数(last_overload)は「直近 last_overload 回の平均応答時間を取得」
+
+引数(mtime_overload)は「平均応答時間が mtime_overload ミリ秒以上となった場合、過負荷状態」
+
+の役割を持つ。
+
+DO_LESS_LAST_OVERLOAD は[参照](#過負荷状態の検出の際に直近の-ping-回数が少ない場合)
 
 ```
 last_overload = 2 # 直近 last_overload 回の平均応答時間を取得
@@ -115,6 +125,7 @@ logs.show_overload(last_overload, mtime_overload, DO_LESS_LAST_OVERLOAD)
 ```
 
 logs.show_subnet_error は、各サブネット毎の故障期間を表示する関数。
+
 **現状、各サブネットの IP アドレスごとの故障開始時間と故障終了時間の一覧表示まで完成**
 
 ```
@@ -170,6 +181,26 @@ ipaddress: 192.168.255.20/22
 # True: LOGFILENAMEにあるログの形式ミスを表示する
 # False:LOGFILENAMEにあるログの形式ミスを表示しない
 IS_VISUABLE_MISS_FORMAT = True
+```
+
+出力
+
+```
+00200119133124 は適切な形式ではありません。
+20200019133124 は適切な形式ではありません。
+20201250133124 は適切な形式ではありません。
+20201219463124 は適切な形式ではありません。
+20200119139924 は適切な形式ではありません。
+20200119133199 は適切な形式ではありません。
+99999999999999 は適切な形式ではありません。
+256.a.30.1/16 は適切な形式ではありません。
+10.20.30.1/0 は適切な形式ではありません。
+10.20.30.1/31 は適切な形式ではありません。
+-99 は適切な形式ではありません。
+20200231133124 は存在しません
+9999999999a999 は適切な形式ではありません。
+310.20.30.1/-99 は適切な形式ではありません。
+-9999 は適切な形式ではありません。
 ```
 
 #### 過負荷状態の検出の際に直近の ping 回数が少ない場合
