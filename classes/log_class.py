@@ -61,15 +61,15 @@ class Log:
 
 class LogCollection(list):
   def __init__(self):
-    self.datetimes_timeout = {}
-    self.datetimes_response = {}
+    self.times_timeout = {}
+    self.times_response = {}
     self.count_timeout = {}
 
-  def get_datetimes_timeout(self):
-    return self.datetimes_timeout
+  def get_times_timeout(self):
+    return self.times_timeout
 
-  def get_datetimes_response(self):
-    return self.datetimes_response
+  def get_times_response(self):
+    return self.times_response
 
   def append_datetimes(self, log, dict):
     l = [[] for i in range(2)]
@@ -83,26 +83,26 @@ class LogCollection(list):
     return dict
 
   def update_datetimes(self):
-    self.datetimes_timeout = {}
-    self.datetimes_response = {}
+    self.times_timeout = {}
+    self.times_response = {}
     for log in self:
       if log.is_timeout():
-        self.datetimes_timeout = self.append_datetimes(log, self.datetimes_timeout)
+        self.times_timeout = self.append_datetimes(log, self.times_timeout)
       else:
-        self.datetimes_response = self.append_datetimes(log, self.datetimes_response)
+        self.times_response = self.append_datetimes(log, self.times_response)
 
   def get_response_and_period(self, ipaddress, datetime_timeout):
-    if ipaddress in self.datetimes_response:
-      for datetime_response in self.datetimes_response[ipaddress][INDEX_DATETIME]:
+    if ipaddress in self.times_response:
+      for datetime_response in self.times_response[ipaddress][INDEX_DATETIME]:
         period_timeout = datetime_response - datetime_timeout
         if period_timeout.days >= 0:  # タイムアウト後に復旧した場合
           return datetime_response, period_timeout
     return None, None
 
   def is_recovered(self, ipaddress):
-    if ipaddress not in self.datetimes_response:
+    if ipaddress not in self.times_response:
       return False
-    elif self.datetimes_timeout[ipaddress][-1] > self.datetimes_response[ipaddress][-1]: # 最終的に復旧していない
+    elif self.times_timeout[ipaddress][-1] > self.times_response[ipaddress][-1]: # 最終的に復旧していない
       return False
     else:
       return True
@@ -110,9 +110,9 @@ class LogCollection(list):
   def show_errors(self, conti_timeout_error=1):
     print("---故障一覧を表示---")
     self.update_datetimes()
-    for ipaddress, datetimes_timeout in self.datetimes_timeout.items():
+    for ipaddress, times_timeout in self.times_timeout.items():
       before_response = None
-      for datetime_timeout in datetimes_timeout[INDEX_DATETIME]:
+      for datetime_timeout in times_timeout[INDEX_DATETIME]:
         datetime_response, period_timeout = self.get_response_and_period(ipaddress, datetime_timeout) # 復旧日時と故障期間の取得
         if before_response == datetime_response:  # datetime_response が前回と同じ場合、連続したタイムアウトとなる
           self.count_timeout[ipaddress] = 1 if ipaddress not in self.count_timeout else self.count_timeout[ipaddress] + 1
@@ -131,15 +131,15 @@ class LogCollection(list):
   def show_overload(self, last_overload=1, mtime_overload=10, do_less_last_overload=True):
     print("---過負荷状態一覧を表示---")
     self.update_datetimes()
-    for ipaddress, datetimes_response in self.datetimes_response.items():
+    for ipaddress, times_response in self.times_response.items():
       sum_restime_overload = 0
       ave_restime_overload = 0
       if do_less_last_overload:
-        last_overload = len(datetimes_response[INDEX_RESTIME]) if last_overload > len(datetimes_response[INDEX_RESTIME]) else last_overload
+        last_overload = len(times_response[INDEX_RESTIME]) if last_overload > len(times_response[INDEX_RESTIME]) else last_overload
       else:
-        if last_overload > len(datetimes_response[INDEX_RESTIME]):
+        if last_overload > len(times_response[INDEX_RESTIME]):
           continue
-      for i, (restime, datetime_response) in enumerate(zip(reversed(datetimes_response[INDEX_RESTIME]), reversed(datetimes_response[INDEX_DATETIME]))):
+      for i, (restime, datetime_response) in enumerate(zip(reversed(times_response[INDEX_RESTIME]), reversed(times_response[INDEX_DATETIME]))):
         sum_restime_overload += int(restime)
         if last_overload <= i + 1:
           break
