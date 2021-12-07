@@ -30,9 +30,16 @@ def check_format(datetime, ipaddress, restime, visuable=True):
 
 class Log:
   def __init__(self, datetime, ipaddress, restime):
+    self.datetime = None
+    self.ipaddress = None
+    self.restime = None
     is_correct_format = check_format(datetime, ipaddress, restime, IS_VISUABLE_MISS_FORMAT)
     if is_correct_format:
-      self.datetime = dt.strptime(datetime, TIMESTR) if type(datetime) is not dt else datetime
+      try:
+        self.datetime = dt.strptime(datetime, TIMESTR)
+      except:
+        print(f"{datetime} は存在しません") if IS_VISUABLE_MISS_FORMAT else None # 存在しない日にちは受け付けない 例）2 月 31 日は存在ため、受け付けない
+        return
       self.ipaddress = ipaddress
       self.restime = restime
 
