@@ -20,6 +20,10 @@ if __name__ == '__main__':
         logs.append(log)
       else:
         del log
-
-  conti_timeout_error = 2
+  conti_timeout_error = 2 # conti_timeout_error 回 timeout が連続すれば、故障とする
   logs.show_errors(conti_timeout_error)
+
+  last_overload = 2
+  mtime_overload = 50
+  do_less_last_overload = False
+  logs.show_overload(last_overload, mtime_overload, do_less_last_overload)

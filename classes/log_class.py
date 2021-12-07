@@ -4,6 +4,8 @@ import re
 PATTERN_DATETIME = "[12]\d{3}" + "(0[1-9]|1[0-2])" + "(0[1-9]|[1-2]\d|3[0-1])" + "([0-1]\d|2[0-3])" + "[0-5]\d" + "[0-5]\d" # YYYYMMDDHHhhmmss
 PATTERN_IPADDRESS = "((\d{1,2}|1\d{0,2}|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d{0,2}|2[0-4]\d|25[0-5])" + "\/([1-9]|[1-2]\d|30)" # 0.0.0.0/1 ~ 255.255.255.255/30
 PATTERN_RESTIME = "(\d+)|-" # timeout は "-", 応答時間は 0 ~
+INDEX_DATETIME = 0
+INDEX_RESTIME = 1
 
 TIMESTR = "%Y%m%d%H%M%S"
 
@@ -69,13 +71,14 @@ class LogCollection(list):
   def get_datetimes_response(self):
     return self.datetimes_response
 
-  def append_times(self, log, dict):
-    l = []
+  def append_datetimes(self, log, dict):
+    l = [[] for i in range(2)]
     if log.ipaddress not in dict:
-      dict[log.ipaddress] = [log.datetime]
+      dict[log.ipaddress] = [[log.datetime], [log.restime]]
     else:
       l = dict[log.ipaddress]
-      l.append(log.datetime)
+      l[INDEX_DATETIME].append(log.datetime)
+      l[INDEX_RESTIME].append(log.restime)
       dict[log.ipaddress] = l
     return dict
 
@@ -84,13 +87,13 @@ class LogCollection(list):
     self.datetimes_response = {}
     for log in self:
       if log.is_timeout():
-        self.datetimes_timeout = self.append_times(log, self.datetimes_timeout)
+        self.datetimes_timeout = self.append_datetimes(log, self.datetimes_timeout)
       else:
-        self.datetimes_response = self.append_times(log, self.datetimes_response)
+        self.datetimes_response = self.append_datetimes(log, self.datetimes_response)
 
   def get_response_and_period(self, ipaddress, datetime_timeout):
     if ipaddress in self.datetimes_response:
-      for datetime_response in self.datetimes_response[ipaddress]:
+      for datetime_response in self.datetimes_response[ipaddress][INDEX_DATETIME]:
         period_timeout = datetime_response - datetime_timeout
         if period_timeout.days >= 0:  # タイムアウト後に復旧した場合
           return datetime_response, period_timeout
@@ -105,10 +108,11 @@ class LogCollection(list):
       return True
 
   def show_errors(self, conti_timeout_error=1):
+    print("---故障一覧を表示---")
     self.update_datetimes()
     for ipaddress, datetimes_timeout in self.datetimes_timeout.items():
       before_response = None
-      for datetime_timeout in datetimes_timeout:
+      for datetime_timeout in datetimes_timeout[INDEX_DATETIME]:
         datetime_response, period_timeout = self.get_response_and_period(ipaddress, datetime_timeout) # 復旧日時と故障期間の取得
         if before_response == datetime_response:  # datetime_response が前回と同じ場合、連続したタイムアウトとなる
           self.count_timeout[ipaddress] = 1 if ipaddress not in self.count_timeout else self.count_timeout[ipaddress] + 1
@@ -123,3 +127,22 @@ class LogCollection(list):
             print(f"復旧済: {ipaddress} は {datetime_timeout} から{period_timeout}の時間、故障していました。")
       if self.is_recovered(ipaddress):
         self.count_timeout[ipaddress] = 0
+
+  def show_overload(self, last_overload=1, mtime_overload=10, do_less_last_overload=True):
+    print("---過負荷状態一覧を表示---")
+    self.update_datetimes()
+    for ipaddress, datetimes_response in self.datetimes_response.items():
+      sum_restime_overload = 0
+      ave_restime_overload = 0
+      if do_less_last_overload:
+        last_overload = len(datetimes_response[INDEX_RESTIME]) if last_overload > len(datetimes_response[INDEX_RESTIME]) else last_overload
+      else:
+        if last_overload > len(datetimes_response[INDEX_RESTIME]):
+          continue
+      for i, (restime, datetime_response) in enumerate(zip(reversed(datetimes_response[INDEX_RESTIME]), reversed(datetimes_response[INDEX_DATETIME]))):
+        sum_restime_overload += int(restime)
+        if last_overload <= i + 1:
+          break
+      ave_restime_overload = sum_restime_overload / last_overload
+      if mtime_overload < ave_restime_overload:
+        print(f"{ipaddress} は {datetime_response} から過負荷状態です")
