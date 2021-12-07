@@ -19,7 +19,7 @@ ping の応答によりサーバの状態を確認するプログラム
 
 ## main 関数
 
-```
+```python
 if __name__ == '__main__':
   logs = LogCollection()
   for line in open(LOGFILENAME, "r"):
@@ -50,7 +50,7 @@ list クラスを継承した LogColloction クラスのインスタンスを作
 
 ログファイルごとに処理できるように、クラスを作成した。
 
-```
+```python
 logs = LogCollection()
 ```
 
@@ -60,7 +60,7 @@ logs = LogCollection()
 
 追加する前に、形式チェックを行い誤ったものは追加しない。
 
-```
+```python
 for line in open(LOGFILENAME, "r"):
     datetime, ipaddress, restime = line.split("\n")[0].split(",")
     is_correct_format = check_format(datetime, ipaddress, restime, IS_VISUABLE_MISS_FORMAT)
@@ -78,7 +78,7 @@ logs.show_errors 関数で各サーバの故障一覧を表示する。
 
 その際に引数(conti_timeout_error)に数値を入れることで timeout 連続によるエラーを再現している。
 
-```
+```python
 conti_timeout_error = 2 # conti_timeout_error 回 timeout が連続すれば、故障とする
 logs.show_errors(conti_timeout_error)
 ```
@@ -118,7 +118,7 @@ logs.show_overload 関数で各サーバの過負荷状態一覧を表示する�
 
 DO_LESS_LAST_OVERLOAD は[参照](#過負荷状態の検出の際に直近の-ping-回数が少ない場合)
 
-```
+```python
 last_overload = 2 # 直近 last_overload 回の平均応答時間を取得
 mtime_overload = 50 # 平均応答時間が mtime_overload ミリ秒以上となった場合、過負荷状態
 logs.show_overload(last_overload, mtime_overload, DO_LESS_LAST_OVERLOAD)
@@ -138,7 +138,7 @@ logs.show_subnet_error は、各サブネット毎の故障期間を表示する
 
 **現状、各サブネットの IP アドレスごとの故障開始時間と故障終了時間の一覧表示まで完成**
 
-```
+```python
 logs.show_subnet_error(conti_timeout_error)
 ```
 
@@ -186,7 +186,7 @@ ipaddress: 192.168.255.20/22
 
 ログファイルに想定したエラーが含まれていた場合、以下のオプションを True にすることで標準出力される。
 
-```
+```python
 # IS_VISUABLE_MISS_FORMAT
 # True: LOGFILENAMEにあるログの形式ミスを表示する
 # False:LOGFILENAMEにあるログの形式ミスを表示しない
@@ -227,7 +227,7 @@ DO_LESS_LAST_OVERLOAD を True にすると、A サーバは直近 3 回の平�
 
 DO_LESS_LAST_OVERLOAD を False にすると、A サーバは直近 3 回しか ping が通っていないため、平均応答時間を求めない。
 
-```
+```python
 # DO_LESS_LAST_OVERLOAD
 # True: 直近のping回数が少なくても合わせて実行
 # False: 直近のping回数が少ない場合、過負荷状態を検出しない
