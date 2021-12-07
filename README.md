@@ -236,7 +236,7 @@ DO_LESS_LAST_OVERLOAD = False
 
 ## テストデータ
 
-[テストデータ](/blob/develop/ping.log)
+[テストデータ](/ping.log)
 
 ## 想定したログエラー
 
