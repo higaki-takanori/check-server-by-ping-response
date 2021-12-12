@@ -1,5 +1,5 @@
 from datetime import datetime as dt
-from queue import Queue
+from collections import deque
 import re
 
 PATTERN_DATETIME = "[12]\d{3}" + "(0[1-9]|1[0-2])" + "(0[1-9]|[1-2]\d|3[0-1])" + "([0-1]\d|2[0-3])" + "[0-5]\d" + "[0-5]\d" # YYYYMMDDHHhhmmss
@@ -96,7 +96,7 @@ class LogServer(list):
     self.ipaddress = ipaddress
     self.network_address = network_address
     self.period_server_error = []
-    self.period_server_overload = None
+    self.period_server_overload = []
 
   def set_ipaddress(self, ipaddress):
     self.ipaddress = ipaddress
@@ -112,7 +112,6 @@ class LogServer(list):
     self.__update_period_server_error(continue_timeout_error, True)
 
   def __update_period_server_error(self, continue_timeout_error=1, visuable=True):
-    # print("---サーバの故障期間を表示---")
     period_server_error = []
     dt_start_error = None
     dt_end_error = None
@@ -134,21 +133,42 @@ class LogServer(list):
     return period_server_error
 
   def get_period_server_overload(self, last_overload=2, mtime_overload=10):
-    print("---サーバの過負荷状態を表示---")
-    queue = Queue()
-    ave_restime = None
-    start_overload = None
-    end_overload = None
+    self.period_server_overload = self.__get_period_server_overload(last_overload, mtime_overload, False)
+    return self.period_server_overload
+
+  def show_period_server_overload(self, last_overload=2, mtime_overload=10):
+    list_period = self.__get_period_server_overload(last_overload, mtime_overload, True)
+    for period in list_period:
+      if period[1] is None:
+        print(f"{self.ipaddress} は {period[0]} から過負荷状態です。")
+      else:
+        print(f"{self.ipaddress} は {period[0]} から {period[1] - period[0]} の時間、過負荷状態でした。")
+
+  def __get_period_server_overload(self, last_overload=2, mtime_overload=10, visuable=True):
+    period_server_overload = []
+    queue = deque()
+    sum_restime = 0
+    ave_restime = 0
+    dt_start_overload = None
+    dt_end_overload = None
     for log in self:
       if log.restime != '-':
-        queue.put(log.restime)
-        if queue.qsize() <= last_overload: # 直近m回の平均応答回数の算出
-          ave_restime =  queue.sum() / queue.qsize()
-          queue.get()
-          start_overload = log.datetime if mtime_overload < ave_restime else None
-          print(ave_restime)
+        queue.append(float(log.restime))
+        if last_overload <= len(queue): # 直近m回の平均応答回数の算出
+          sum_restime = sum(queue)
+          ave_restime =  sum_restime / len(queue)
+          queue.popleft()
+        if mtime_overload < ave_restime:
+          dt_start_overload = log.datetime if dt_start_overload is None else dt_start_overload
         else:
-          end_overload = log.datetime if mtime_overload < ave_restime else None
+          dt_end_overload = log.datetime if dt_start_overload is not None else None
+          if (type(dt_start_overload) is dt) and (type(dt_end_overload) is dt) and (dt_start_overload <= dt_end_overload):
+            period_server_overload.append([dt_start_overload, dt_end_overload])
+            dt_start_overload = dt_end_overload = None
+    if (dt_start_overload is not None) and (dt_end_overload is None):
+      period_server_overload.append([dt_start_overload, dt_end_overload])
+
+    return period_server_overload
 
 # LogSubnet is log collection per subnet
 # ---constract---

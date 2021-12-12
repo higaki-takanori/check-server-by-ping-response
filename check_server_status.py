@@ -31,6 +31,14 @@ if __name__ == '__main__':
   continue_timeout_error = 2
   for ipaddress, server in servers.items():
     server.show_period_server_error(continue_timeout_error)
+    print(server.get_period_server_error())
+
+  print("---サーバの過負荷状態を表示---")
+  last_overload = 2
+  mtime_overload = 50
+  for ipaddress, server in servers.items():
+    print(f"*** ipaddress: {ipaddress} ***")
+    server.show_period_server_overload(last_overload, mtime_overload)
 
   # for network_address, subnet in subnets.items():
   #   print(f"--- network_address: {network_address} ---")
