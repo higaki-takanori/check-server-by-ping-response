@@ -105,13 +105,18 @@ class LogServer(list):
     return self.ipaddress
 
   def get_period_server_error(self, continue_timeout_error=1):
-    self.period_server_error = self.__update_period_server_error(continue_timeout_error, False)
+    self.period_server_error = self.__get_period_server_error(continue_timeout_error)
     return self.period_server_error
 
   def show_period_server_error(self, continue_timeout_error=1):
-    self.__update_period_server_error(continue_timeout_error, True)
+    list_period = self.__get_period_server_error(continue_timeout_error)
+    for period in list_period:
+      if period[1] is None:
+        print(f"故障中: {self.ipaddress} は {period[0]} から ping が timeout です。")
+      else:
+        print(f"復旧済: {self.ipaddress} は {period[0]} から{period[1] - period[0]}の時間、故障していました。")
 
-  def __update_period_server_error(self, continue_timeout_error=1, visuable=True):
+  def __get_period_server_error(self, continue_timeout_error=1):
     period_server_error = []
     dt_start_error = None
     dt_end_error = None
@@ -124,27 +129,26 @@ class LogServer(list):
         dt_end_error = log.datetime if continue_timeout_error <= count_error else None
         count_error = 0
       if (type(dt_start_error) is dt) and (type(dt_end_error) is dt) and (dt_start_error <= dt_end_error):
-        print(f"復旧済: {log.ipaddress} は {dt_start_error} から{dt_end_error - dt_start_error}の時間、故障していました。") if visuable else None
         period_server_error.append([dt_start_error, dt_end_error])
         dt_start_error = dt_end_error = None
     if (dt_start_error is not None) and (dt_end_error is None):
-      print(f"故障中: {log.ipaddress} は {dt_start_error} から ping が timeout です。") if visuable else None
       period_server_error.append([dt_start_error, dt_end_error])
+
     return period_server_error
 
   def get_period_server_overload(self, last_overload=2, mtime_overload=10):
-    self.period_server_overload = self.__get_period_server_overload(last_overload, mtime_overload, False)
+    self.period_server_overload = self.__get_period_server_overload(last_overload, mtime_overload)
     return self.period_server_overload
 
   def show_period_server_overload(self, last_overload=2, mtime_overload=10):
-    list_period = self.__get_period_server_overload(last_overload, mtime_overload, True)
+    list_period = self.__get_period_server_overload(last_overload, mtime_overload)
     for period in list_period:
       if period[1] is None:
-        print(f"{self.ipaddress} は {period[0]} から過負荷状態です。")
+        print(f"未解決: {self.ipaddress} は {period[0]} から過負荷状態です。")
       else:
-        print(f"{self.ipaddress} は {period[0]} から {period[1] - period[0]} の時間、過負荷状態でした。")
+        print(f"解決済: {self.ipaddress} は {period[0]} から {period[1] - period[0]} の時間、過負荷状態でした。")
 
-  def __get_period_server_overload(self, last_overload=2, mtime_overload=10, visuable=True):
+  def __get_period_server_overload(self, last_overload=2, mtime_overload=10):
     period_server_overload = []
     queue = deque()
     sum_restime = 0
