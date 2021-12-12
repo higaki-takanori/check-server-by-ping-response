@@ -24,25 +24,20 @@ if __name__ == '__main__':
       else:
         del log
 
-  # for log in logs:
-  #   print(log.datetime, log.ipaddress, log.restime)
-
   servers = logs.get_servers()
   subnets = logs.get_subnets()
-  # print(servers)
-  # print(subnets)
 
-  # for ipaddress, server in servers.items():
-  #   print(f"ipaddress: {ipaddress}")
-  #   for log in server:
-  #     print(log.network_address, log.datetime, log.ipaddress, log.restime)
+  print("---サーバの故障一覧を表示---")
+  continue_timeout_error = 2
+  for ipaddress, server in servers.items():
+    server.get_period_server_error(continue_timeout_error)
 
-  for network_address, subnet in subnets.items():
-    print(f"--- network_address: {network_address} ---")
-    for ipaddress, server in subnet.items():
-      print(ipaddress)
-      for log in server:
-        print(log.datetime, log.ipaddress, log.restime)
+  # for network_address, subnet in subnets.items():
+  #   print(f"--- network_address: {network_address} ---")
+  #   for ipaddress, server in subnet.items():
+  #     print(ipaddress)
+  #     for log in server:
+  #       print(log.datetime, log.ipaddress, log.restime)
 
 
   # conti_timeout_error = 2 # conti_timeout_error 回 timeout が連続すれば、故障とする

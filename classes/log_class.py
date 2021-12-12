@@ -105,23 +105,27 @@ class LogServer(list):
     return self.ipaddress
 
   def get_period_server_error(self, continue_timeout_error=1):
-    print("---サーバの故障期間を表示---")
+    # print("---サーバの故障期間を表示---")
+    period_server_error = []
     dt_start_error = None
     dt_end_error = None
     count_error = 0
     for log in self:
       if log.restime == '-':
         count_error += 1
-        dt_start_error = log.datetime if count_error <= continue_timeout_error else None
+        dt_start_error = log.datetime if continue_timeout_error <= count_error and dt_start_error is None else dt_start_error
       else:
-        dt_end_error = log.datetime if count_error <= continue_timeout_error else None
+        dt_end_error = log.datetime if continue_timeout_error <= count_error else None
         count_error = 0
       if (type(dt_start_error) is dt) and (type(dt_end_error) is dt) and (dt_start_error <= dt_end_error):
         print(f"復旧済: {log.ipaddress} は {dt_start_error} から{dt_end_error - dt_start_error}の時間、故障していました。")
-        self.period_server_error.append([dt_start_error, dt_end_error])
+        dt_start_error = dt_end_error = None
+        period_server_error.append([dt_start_error, dt_end_error])
     if (dt_start_error is not None) and (dt_end_error is None):
       print(f"故障中: {log.ipaddress} は {dt_start_error} から ping が timeout です。")
-      self.period_server_error.append([dt_start_error, dt_end_error])
+      period_server_error.append([dt_start_error, dt_end_error])
+
+    return period_server_error
 
   def get_period_server_overload(self, last_overload=2, mtime_overload=10):
     print("---サーバの過負荷状態を表示---")
@@ -171,9 +175,21 @@ class LogCollection(list):
     self.servers = {}
     self.subnets = {}
 
-  # return LogServer
-  # LogServer is log collection per ipaddress
   def get_servers(self):
+    self.servers = self.__update_servers()
+    return self.servers
+
+  def get_subnets(self):
+    self.subnets = self.__update_subnets()
+    return self.subnets
+
+  # private method update servers
+  # thid method return servers dict
+  # ex) server dict
+  # {'10.20.30.1/16': [Log, Log, Log, ...],
+  # '192.168.1.1/24': [Log, Log, Log, ...],
+  # ...}
+  def __update_servers(self):
     servers = {}
     for log in self:
       if log.ipaddress not in servers:
@@ -183,23 +199,30 @@ class LogCollection(list):
       else:
         print(f"{servers[log.ipaddress]} can not create LogServer Instance")
         return -1
-    self.servers = servers
     return servers
 
-  def get_subnets(self):
+  # private method Update subnets
+  # thid method return subnets dict
+  # ex) subnets dict
+  # {'192.168.252.0':
+  #     {'192.168.255.1/22': [Log, Log, Log, ...],
+  #     '192.168.255.20/22': [Log, Log, Log, ...]},
+  # '10.20.0.0':
+  #     {'10.20.30.1/16': [Log, Log, Log, ...],
+  #     {'10.20.40.1/16': [Log, Log, Log, ...]}
+  # }
+  def __update_subnets(self):
     subnets = {}
     servers = self.get_servers()
     for ipaddress, server in servers.items():
       network_address = server.network_address
-      # print(network_address)
-      # print(ipaddress)
-      # print(type(server))
       if network_address not in subnets:
         subnets[network_address] = LogSubnet(network_address)
       if type(subnets[network_address]) is LogSubnet:
         subnets[network_address][ipaddress] = server
       else:
-        print(f"error")
+        print(f"{subnets[network_address]} can not create LogSubnet Instance")
+        return -1
     return subnets
 
 class LogCollections(list):
