@@ -30,7 +30,7 @@ if __name__ == '__main__':
   print("---サーバの故障一覧を表示---")
   continue_timeout_error = 2
   for ipaddress, server in servers.items():
-    server.get_period_server_error(continue_timeout_error)
+    server.show_period_server_error(continue_timeout_error)
 
   # for network_address, subnet in subnets.items():
   #   print(f"--- network_address: {network_address} ---")

@@ -105,6 +105,13 @@ class LogServer(list):
     return self.ipaddress
 
   def get_period_server_error(self, continue_timeout_error=1):
+    self.period_server_error = self.__update_period_server_error(continue_timeout_error, False)
+    return self.period_server_error
+
+  def show_period_server_error(self, continue_timeout_error=1):
+    self.__update_period_server_error(continue_timeout_error, True)
+
+  def __update_period_server_error(self, continue_timeout_error=1, visuable=True):
     # print("---サーバの故障期間を表示---")
     period_server_error = []
     dt_start_error = None
@@ -118,13 +125,12 @@ class LogServer(list):
         dt_end_error = log.datetime if continue_timeout_error <= count_error else None
         count_error = 0
       if (type(dt_start_error) is dt) and (type(dt_end_error) is dt) and (dt_start_error <= dt_end_error):
-        print(f"復旧済: {log.ipaddress} は {dt_start_error} から{dt_end_error - dt_start_error}の時間、故障していました。")
-        dt_start_error = dt_end_error = None
+        print(f"復旧済: {log.ipaddress} は {dt_start_error} から{dt_end_error - dt_start_error}の時間、故障していました。") if visuable else None
         period_server_error.append([dt_start_error, dt_end_error])
+        dt_start_error = dt_end_error = None
     if (dt_start_error is not None) and (dt_end_error is None):
-      print(f"故障中: {log.ipaddress} は {dt_start_error} から ping が timeout です。")
+      print(f"故障中: {log.ipaddress} は {dt_start_error} から ping が timeout です。") if visuable else None
       period_server_error.append([dt_start_error, dt_end_error])
-
     return period_server_error
 
   def get_period_server_overload(self, last_overload=2, mtime_overload=10):
