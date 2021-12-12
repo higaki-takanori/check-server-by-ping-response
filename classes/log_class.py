@@ -1,4 +1,5 @@
 from datetime import datetime as dt
+from collections import deque
 import re
 
 PATTERN_DATETIME = "[12]\d{3}" + "(0[1-9]|1[0-2])" + "(0[1-9]|[1-2]\d|3[0-1])" + "([0-1]\d|2[0-3])" + "[0-5]\d" + "[0-5]\d" # YYYYMMDDHHhhmmss
@@ -12,7 +13,7 @@ TIMESTR = "%Y%m%d%H%M%S"
 # IS_VISUABLE_MISS_FORMAT
 # True: LOGFILENAMEにあるログの形式ミスを表示する
 # False:LOGFILENAMEにあるログの形式ミスを表示しない
-IS_VISUABLE_MISS_FORMAT = True
+IS_VISUABLE_MISS_FORMAT = False
 
 def check_format(datetime, ipaddress, restime, visuable=True):
   check_datetime = re.fullmatch(PATTERN_DATETIME, datetime)
@@ -44,6 +45,7 @@ class Log:
         return
       self.ipaddress = ipaddress
       self.restime = restime
+      self.network_address = self.get_network_address()
 
   def is_timeout(self):
     if self.restime == '-':
@@ -65,18 +67,195 @@ class Log:
     ipaddress = ipaddress.split(".")
     syo = int(subnet) // 8
     amari = int(subnet) % 8
-    network_address = []
+    list_network_address = []
+    network_address = None
     for i, address in enumerate(ipaddress):
       if i < syo:
-        network_address.append(address)
+        list_network_address.append(address)
       elif i == syo:
         shifted_address = int(address) >> amari
-        network_address.append(str(int(address) - shifted_address))
+        list_network_address.append(str(int(address) - shifted_address))
       else:
-        network_address.append("0")
+        list_network_address.append("0")
+    network_address = ".".join(list_network_address)
     return network_address
 
+# LogServer is log collection per ipaddress
+# ---constract---
+# [Log, Log, Log, ...]
+# ---instance variables---
+# self.ipaddress
+# is recognized where server's Log.
+#
+# self.period_server_error
+# is list of datetime of start_error and end_error
+# [[dt_start_error, dt_end_error], [dt_start_error, dt_end_error], ... ]
+# [[1回目の故障期間], [2回目の故障期間], ...]
+class LogServer(list):
+  def __init__(self, ipaddress=None, network_address=None):
+    self.ipaddress = ipaddress
+    self.network_address = network_address
+    self.period_server_error = []
+    self.period_server_overload = []
+
+  def set_ipaddress(self, ipaddress):
+    self.ipaddress = ipaddress
+
+  def get_ipaddress(self):
+    return self.ipaddress
+
+  def get_period_server_error(self, continue_timeout_error=1):
+    self.period_server_error = self.__get_period_server_error(continue_timeout_error)
+    return self.period_server_error
+
+  def show_period_server_error(self, continue_timeout_error=1):
+    list_period = self.__get_period_server_error(continue_timeout_error)
+    for period in list_period:
+      if period[1] is None:
+        print(f"故障中: {self.ipaddress} は {period[0]} から ping が timeout です。")
+      else:
+        print(f"復旧済: {self.ipaddress} は {period[0]} から{period[1] - period[0]}の時間、故障していました。")
+
+  def __get_period_server_error(self, continue_timeout_error=1):
+    period_server_error = []
+    dt_start_error = None
+    dt_end_error = None
+    count_error = 0
+    for log in self:
+      if log.restime == '-':
+        count_error += 1
+        dt_start_error = log.datetime if continue_timeout_error <= count_error and dt_start_error is None else dt_start_error
+      else:
+        dt_end_error = log.datetime if continue_timeout_error <= count_error else None
+        count_error = 0
+      if (type(dt_start_error) is dt) and (type(dt_end_error) is dt) and (dt_start_error <= dt_end_error):
+        period_server_error.append([dt_start_error, dt_end_error])
+        dt_start_error = dt_end_error = None
+    if (dt_start_error is not None) and (dt_end_error is None):
+      period_server_error.append([dt_start_error, dt_end_error])
+
+    return period_server_error
+
+  def get_period_server_overload(self, last_overload=2, mtime_overload=10):
+    self.period_server_overload = self.__get_period_server_overload(last_overload, mtime_overload)
+    return self.period_server_overload
+
+  def show_period_server_overload(self, last_overload=2, mtime_overload=10):
+    list_period = self.__get_period_server_overload(last_overload, mtime_overload)
+    for period in list_period:
+      if period[1] is None:
+        print(f"未解決: {self.ipaddress} は {period[0]} から過負荷状態です。")
+      else:
+        print(f"解決済: {self.ipaddress} は {period[0]} から {period[1] - period[0]} の時間、過負荷状態でした。")
+
+  def __get_period_server_overload(self, last_overload=2, mtime_overload=10):
+    period_server_overload = []
+    queue = deque()
+    sum_restime = 0
+    ave_restime = 0
+    dt_start_overload = None
+    dt_end_overload = None
+    for log in self:
+      if log.restime != '-':
+        queue.append(float(log.restime))
+        if last_overload <= len(queue): # 直近m回の平均応答回数の算出
+          sum_restime = sum(queue)
+          ave_restime =  sum_restime / len(queue)
+          queue.popleft()
+        if mtime_overload < ave_restime:
+          dt_start_overload = log.datetime if dt_start_overload is None else dt_start_overload
+        else:
+          dt_end_overload = log.datetime if dt_start_overload is not None else None
+          if (type(dt_start_overload) is dt) and (type(dt_end_overload) is dt) and (dt_start_overload <= dt_end_overload):
+            period_server_overload.append([dt_start_overload, dt_end_overload])
+            dt_start_overload = dt_end_overload = None
+    if (dt_start_overload is not None) and (dt_end_overload is None):
+      period_server_overload.append([dt_start_overload, dt_end_overload])
+
+    return period_server_overload
+
+# LogSubnet is log collection per subnet
+# ---constract---
+# {network_address: [Log, Log, Log, ...],
+# network_address: [Log, Log, Log, ...]}
+# ex)
+# {'192.168.255.1/22': [Log, Log, Log, ...],
+# '192.168.255.20/22': [Log, Log, Log, ...]}
+class LogSubnet(dict):
+  def __init__(self, network_address=None):
+    self.network_address = network_address
+    self.server_ipaddress = []
+    self.period_subnet_error = None
+    self.period_subnet_overload = None
+
+  def set_network_address(self, network_address):
+    self.network_address = network_address
+
+  def get_network_address(self):
+    return self.network_address
+
+  def get_period_subnet_error(self):
+    print("---サブネットの故障期間を表示---")
+
+  def get_period_subnet_overload(self):
+    print("---サブネットの過負荷状態を表示---")
+
 class LogCollection(list):
+  def __init__(self):
+    self.servers = {}
+    self.subnets = {}
+
+  def get_servers(self):
+    self.servers = self.__update_servers()
+    return self.servers
+
+  def get_subnets(self):
+    self.subnets = self.__update_subnets()
+    return self.subnets
+
+  # private method update servers
+  # thid method return servers dict
+  # ex) server dict
+  # {'10.20.30.1/16': [Log, Log, Log, ...],
+  # '192.168.1.1/24': [Log, Log, Log, ...],
+  # ...}
+  def __update_servers(self):
+    servers = {}
+    for log in self:
+      if log.ipaddress not in servers:
+        servers[log.ipaddress] = LogServer(log.ipaddress, log.network_address)
+      if type(servers[log.ipaddress]) is LogServer:
+        servers[log.ipaddress].append(log)
+      else:
+        print(f"{servers[log.ipaddress]} can not create LogServer Instance")
+        return -1
+    return servers
+
+  # private method Update subnets
+  # thid method return subnets dict
+  # ex) subnets dict
+  # {'192.168.252.0':
+  #     {'192.168.255.1/22': [Log, Log, Log, ...],
+  #     '192.168.255.20/22': [Log, Log, Log, ...]},
+  # '10.20.0.0':
+  #     {'10.20.30.1/16': [Log, Log, Log, ...],
+  #     {'10.20.40.1/16': [Log, Log, Log, ...]}
+  # }
+  def __update_subnets(self):
+    subnets = {}
+    servers = self.get_servers()
+    for ipaddress, server in servers.items():
+      network_address = server.network_address
+      if network_address not in subnets:
+        subnets[network_address] = LogSubnet(network_address)
+      if type(subnets[network_address]) is LogSubnet:
+        subnets[network_address][ipaddress] = server
+      else:
+        print(f"{subnets[network_address]} can not create LogSubnet Instance")
+        return -1
+    return subnets
+
+class LogCollections(list):
   def __init__(self):
     self.times_timeout = {}
     self.times_response = {}
@@ -207,11 +386,15 @@ class LogCollection(list):
     period_subnet_error =  self.get_period_subnet_error(conti_timeout_error)
     for network_address, periods_error in period_subnet_error.items():
       print(f"---{network_address}---")
+      period_network = []
       for ipaddress, datetimes in periods_error.items():
         print(f"ipaddress: {ipaddress}")
         print("   故障開始時間   ｜   故障終了時間   ")
         for start_time1, end_time1 in datetimes:
           print(f"{start_time1}| {end_time1}")
+          if len(period_network) == 0:
+            period_network.append([start_time1, end_time1])
+      print(period_network)
 
   def compare_period(self, start_time1, end_time1, start_time2, end_time2):
     start_time = None
