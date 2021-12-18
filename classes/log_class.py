@@ -194,11 +194,110 @@ class LogSubnet(dict):
   def get_network_address(self):
     return self.network_address
 
-  def get_period_subnet_error(self):
-    print("---サブネットの故障期間を表示---")
+  def get_period_subnet_error(self, continue_timeout_error=1):
+    self.period_subnet_error = self.__get_period_subnet_error(continue_timeout_error)
+    return self.period_subnet_error
 
-  def get_period_subnet_overload(self):
-    print("---サブネットの過負荷状態を表示---")
+  def show_period_subnet_error(self, continue_timeout_error=1):
+    list_period = self.__get_period_subnet_error(continue_timeout_error)
+    for period in list_period:
+      if period[1] is None:
+        print(f"サブネット故障中: {self.network_address} は {period[0]} から ping が timeout です。")
+      else:
+        print(f"サブネット復旧済: {self.network_address} は {period[0]} から{period[1] - period[0]}の時間、故障していました。")
+
+
+  def get_period_subnet_overload(self, last_overload=2, mtime_overload=10):
+    self.period_subnet_overload = self.__get_period_subnet_overload(last_overload, mtime_overload)
+    return self.period_subnet_overload
+
+  def get_overlap_period(self, period_a, period_b):
+    POS_START = 0
+    POS_END = 1
+    dt_start_a = dt_end_a = None
+    dt_start_b = dt_end_b = None
+    period_overlap = []
+    for dt_a in period_a:
+      dt_start_a = dt_a[POS_START]
+      dt_end_a = dt_a[POS_END]
+      for dt_b in period_b:
+        dt_start_b = dt_b[POS_START]
+        dt_end_b = dt_b[POS_END]
+        if (dt_end_b is not None) and (dt_end_a is not None):
+          if dt_end_b < dt_start_a:
+            #             <---a--->
+            # <--b--->
+            continue
+          elif dt_end_a < dt_start_b:
+            # <---a--->
+            #             <---b--->
+            continue
+          elif dt_start_a < dt_start_b and dt_end_b < dt_end_a:
+            # <---a----->
+            #   <--b-->
+            period_overlap.append([dt_start_b, dt_end_b])
+          elif dt_start_a < dt_start_b and dt_end_a < dt_end_b:
+            # <---a--->
+            #   <---b--->
+            period_overlap.append([dt_start_b, dt_end_a])
+          elif dt_start_b < dt_start_a and dt_end_b < dt_end_a:
+            #   <---a--->
+            # <--b--->
+            period_overlap.append([dt_start_a, dt_end_b])
+        elif (dt_end_a is None) and (dt_start_b is None):
+          if dt_start_b < dt_start_a:
+            #   <---a---
+            # <---b---
+            period_overlap.append([dt_start_a, None])
+          elif dt_start_a < dt_start_b:
+            # <---a---
+            #   <---b---
+            period_overlap.append([dt_start_b, None])
+        elif dt_end_a is None:
+          if dt_end_b < dt_start_a:
+            #           <---a---
+            # <--b-->
+            continue
+          elif dt_start_a < dt_end_b:
+            if dt_start_a < dt_start_b:
+              # <---a------
+              #   <--b-->
+              period_overlap.append([dt_start_b, dt_end_b])
+            elif dt_start_b < dt_start_a:
+              #   <---a---
+              # <--b-->
+              period_overlap.append([dt_start_a, dt_end_b])
+        elif dt_end_b is None:
+          if dt_end_a < dt_start_b:
+            # <--a-->
+            #           <--b---
+            continue
+          else:
+            if dt_start_a < dt_start_b:
+              # <--a-->
+              #   <--b-----
+              period_overlap.append([dt_start_b, dt_end_a])
+            elif dt_start_b < dt_start_a:
+              #   <--a-->
+              # <----b-----
+              period_overlap.append([dt_start_a, dt_end_a])
+
+    return period_overlap
+
+  def __get_period_subnet_error(self, continue_timeout_error=1):
+    period_overlap = None
+    for network_address, subnet in self.items():
+      period_server = subnet.get_period_server_error(continue_timeout_error)
+      if period_overlap is None:
+        period_overlap = period_server
+      else:
+        period_overlap = self.get_overlap_period(period_overlap, period_server)
+
+    return period_overlap
+
+  def __get_period_subnet_overload(self, last_overload=2, mtime_overload=10):
+    for subnet in self:
+      print(subnet)
 
 class LogCollection(list):
   def __init__(self):
