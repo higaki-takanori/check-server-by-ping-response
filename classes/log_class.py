@@ -202,10 +202,9 @@ class LogSubnet(dict):
     list_period = self.__get_period_subnet_error(continue_timeout_error)
     for period in list_period:
       if period[1] is None:
-        print(f"サブネット故障中: {self.network_address} は {period[0]} から ping が timeout です。")
+        print(f"故障中: サブネット({self.network_address}) は {period[0]} から ping が timeout です。")
       else:
-        print(f"サブネット復旧済: {self.network_address} は {period[0]} から{period[1] - period[0]}の時間、故障していました。")
-
+        print(f"復旧済: サブネット({self.network_address}) は {period[0]} から{period[1] - period[0]}の時間、故障していました。")
 
   def get_period_subnet_overload(self, last_overload=2, mtime_overload=10):
     self.period_subnet_overload = self.__get_period_subnet_overload(last_overload, mtime_overload)
