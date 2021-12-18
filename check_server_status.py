@@ -38,6 +38,12 @@ if __name__ == '__main__':
   for ipaddress, server in servers.items():
     server.show_period_server_overload(last_overload, mtime_overload)
 
+  print("---サブネットの故障期間を表示---")
+  for network_address, subnet in subnets.items():
+    subnet.show_period_subnet_error()
+
+
+  print("---サブネットの過負荷状態を表示---")
   # for network_address, subnet in subnets.items():
   #   print(f"--- network_address: {network_address} ---")
   #   for ipaddress, server in subnet.items():
