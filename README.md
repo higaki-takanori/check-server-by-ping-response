@@ -32,14 +32,31 @@ if __name__ == '__main__':
       else:
         del log
 
-  conti_timeout_error = 2 # conti_timeout_error 回 timeout が連続すれば、故障とする
-  logs.show_errors(conti_timeout_error)
+  servers = logs.get_servers()
+  subnets = logs.get_subnets()
 
+  print("---サーバの故障一覧を表示---")
+  continue_timeout_error = 2  # continue_timeout_error 回 timeout が連続すれば、故障とする
+  for ipaddress, server in servers.items():
+    server.show_period_server_error(continue_timeout_error)
+
+  print("---サーバの過負荷状態を表示---")
   last_overload = 2 # 直近 last_overload 回の平均応答時間を取得
   mtime_overload = 50 # 平均応答時間が mtime_overload ミリ秒以上となった場合、過負荷状態
-  logs.show_overload(last_overload, mtime_overload, DO_LESS_LAST_OVERLOAD)
+  for ipaddress, server in servers.items():
+    server.show_period_server_overload(last_overload, mtime_overload)
 
-  logs.show_subnet_error(conti_timeout_error)
+  print("---サブネットの故障期間を表示---")
+  continue_timeout_error = 1  # continue_timeout_error 回 timeout が連続すれば、故障とする
+  for network_address, subnet in subnets.items():
+    subnet.show_period_subnet_error(continue_timeout_error)
+
+
+  print("---サブネットの過負荷状態を表示---")
+  last_overload = 2 # 直近 last_overload 回の平均応答時間を取得
+  mtime_overload = 50 # 平均応答時間が mtime_overload ミリ秒以上となった場合、過負荷状態
+  for network_address, subnet in subnets.items():
+    subnet.show_period_subnet_overload(last_overload, mtime_overload)
 ```
 
 ### main 関数の処理
@@ -72,43 +89,61 @@ for line in open(LOGFILENAME, "r"):
         del log
 ```
 
-#### 各サーバの故障一覧
+#### LogServer インスタンスの作成
 
-logs.show_errors 関数で各サーバの故障一覧を表示する。
+ログをサーバ毎に処理するための[LogServer クラス](#LogServer-クラス)のインスタンスを作成する。
 
-その際に引数(conti_timeout_error)に数値を入れることで timeout 連続によるエラーを再現している。
+LogCollection クラス内のメソッドからインスタンスを作成することができる。
 
 ```python
-conti_timeout_error = 2 # conti_timeout_error 回 timeout が連続すれば、故障とする
-logs.show_errors(conti_timeout_error)
+servers = logs.get_servers()
+```
+
+#### LogSubnet インスタンスの作成
+
+ログをサブネット（スイッチ）毎に処理するための[LogSubnet クラス](#LogSubnet-クラス)のインスタンスを作成する。
+
+LogCollection クラス内のメソッドからインスタンスを作成することができる。
+
+```python
+subnets = logs.get_subnets()
+```
+
+#### 各サーバの故障一覧
+
+各サーバの故障一覧を表示する。
+
+その際に引数(continue_timeout_error)に数値を入れることで timeout 連続によるエラーを再現している。
+
+故障が復旧しているかを判断することができる表示となっている。
+
+```python
+  print("---サーバの故障一覧を表示---")
+  continue_timeout_error = 2  # continue_timeout_error 回 timeout が連続すれば、故障とする
+  for ipaddress, server in servers.items():
+    server.show_period_server_error(continue_timeout_error)
 ```
 
 出力
 
 ```
----故障一覧を表示---
-復旧済: 10.20.30.1/16 は 2020-10-19 13:33:25 から0:00:19の時間、故障していました。
-復旧済: 10.20.30.1/16 は 2020-10-19 13:33:26 から0:00:18の時間、故障していました。
-復旧済: 10.20.30.1/16 は 2020-10-19 13:33:27 から0:00:17の時間、故障していました。
-復旧済: 10.20.30.1/16 は 2020-10-19 13:33:28 から0:00:16の時間、故障していました。
+---サーバの故障一覧を表示---
+復旧済: 10.20.30.1/16 は 2020-10-19 13:33:25 から0:00:02の時間、故障していました。
 復旧済: 10.20.30.1/16 は 2020-10-19 13:33:29 から0:00:15の時間、故障していました。
-復旧済: 10.20.30.1/16 は 2020-10-19 13:33:30 から0:00:14の時間、故障していました。
+復旧済: 10.20.30.1/16 は 2021-10-19 13:33:51 から0:00:06の時間、故障していました。
+復旧済: 10.20.30.1/16 は 2021-10-19 13:37:20 から0:00:01の時間、故障していました。
+復旧済: 10.20.30.2/16 は 2020-10-19 13:33:35 から0:00:08の時間、故障していました。
+復旧済: 10.20.30.2/16 は 2021-10-19 13:33:54 から0:00:04の時間、故障していました。
+復旧済: 10.20.30.2/16 は 2021-10-19 13:37:12 から0:00:20の時間、故障していました。
 復旧済: 192.168.1.2/24 は 2020-10-19 13:34:45 から10 days, 0:03:00の時間、故障していました。
-復旧済: 192.168.1.2/24 は 2020-10-19 13:35:45 から10 days, 0:02:00の時間、故障していました。
-復旧済: 192.168.1.2/24 は 2020-10-19 13:36:45 から10 days, 0:01:00の時間、故障していました。
 故障中: 192.168.200.1/24 は 2020-10-30 20:59:21 から ping が timeout です。
 復旧済: 192.168.255.1/22 は 2020-10-30 21:59:41 から0:00:03の時間、故障していました。
-復旧済: 192.168.255.1/22 は 2020-10-30 21:59:42 から0:00:02の時間、故障していました。
-復旧済: 192.168.255.1/22 は 2020-10-30 21:59:43 から0:00:01の時間、故障していました。
 故障中: 192.168.255.20/22 は 2020-12-01 11:11:13 から ping が timeout です。
-故障中: 192.168.255.20/22 は 2020-12-01 11:11:14 から ping が timeout です。
-故障中: 192.168.255.20/22 は 2020-12-01 11:11:15 から ping が timeout です。
-
 ```
 
 #### 各サーバの過負荷状態一覧
 
-logs.show_overload 関数で各サーバの過負荷状態一覧を表示する。
+各サーバの過負荷状態一覧を表示する。
 
 その際、引数(last_overload)は「直近 last_overload 回の平均応答時間を取得」
 
@@ -116,68 +151,68 @@ logs.show_overload 関数で各サーバの過負荷状態一覧を表示する�
 
 の役割を持つ。
 
-DO_LESS_LAST_OVERLOAD は[参照](#過負荷状態の検出の際に直近の-ping-回数が少ない場合)
-
 ```python
-last_overload = 2 # 直近 last_overload 回の平均応答時間を取得
-mtime_overload = 50 # 平均応答時間が mtime_overload ミリ秒以上となった場合、過負荷状態
-logs.show_overload(last_overload, mtime_overload, DO_LESS_LAST_OVERLOAD)
+  print("---サーバの過負荷状態を表示---")
+  last_overload = 2 # 直近 last_overload 回の平均応答時間を取得
+  mtime_overload = 50 # 平均応答時間が mtime_overload ミリ秒以上となった場合、過負荷状態
+  for ipaddress, server in servers.items():
+    server.show_period_server_overload(last_overload, mtime_overload)
 ```
 
 出力
 
 ```
----過負荷状態一覧を表示---
-192.168.1.2/24 は 2020-10-19 13:32:35 から過負荷状態です
-192.168.255.1/22 は 2020-10-30 21:59:39 から過負荷状態です
+---サーバの過負荷状態を表示---
+解決済: 10.20.30.1/16 は 2020-10-19 13:32:24 から 0:01:20 の時間、過負荷状態でした。
+解決済: 10.20.30.1/16 は 2021-10-19 13:33:45 から 0:00:02 の時間、過負荷状態でした。
+未解決: 10.20.30.1/16 は 2021-10-19 13:33:48 から過負荷状態です。
+解決済: 10.20.30.2/16 は 2021-10-19 13:33:58 から 0:03:47 の時間、過負荷状態でした。
+未解決: 10.20.30.2/16 は 2021-10-19 13:38:57 から過負荷状態です。
+未解決: 192.168.1.2/24 は 2020-10-29 13:37:45 から過負荷状態です。
+未解決: 192.168.255.1/22 は 2020-10-30 21:59:44 から過負荷状態です。
 ```
 
 #### 各サブネット毎の故障期間一覧
 
-logs.show_subnet_error は、各サブネット毎の故障期間を表示する関数。
-
-**現状、各サブネットの IP アドレスごとの故障開始時間と故障終了時間の一覧表示まで完成**
+各サブネット毎の故障期間を表示する。
 
 ```python
-logs.show_subnet_error(conti_timeout_error)
+  print("---サブネットの故障期間を表示---")
+  continue_timeout_error = 1  # continue_timeout_error 回 timeout が連続すれば、故障とする
+  for network_address, subnet in subnets.items():
+    subnet.show_period_subnet_error(continue_timeout_error)
 ```
 
 出力
 
 ```
----サブネットの故障一覧を表示---
----10.20.0.0---
-ipaddress: 10.20.30.1/16
-   故障開始時間   ｜   故障終了時間
-2020-10-19 13:33:25| 2020-10-19 13:33:44
-2020-10-19 13:33:26| 2020-10-19 13:33:44
-2020-10-19 13:33:27| 2020-10-19 13:33:44
-2020-10-19 13:33:28| 2020-10-19 13:33:44
-2020-10-19 13:33:29| 2020-10-19 13:33:44
-2020-10-19 13:33:30| 2020-10-19 13:33:44
----192.168.1.0---
-ipaddress: 192.168.1.2/24
-   故障開始時間   ｜   故障終了時間
-2020-10-19 13:34:45| 2020-10-29 13:37:45
-2020-10-19 13:35:45| 2020-10-29 13:37:45
-2020-10-19 13:36:45| 2020-10-29 13:37:45
----192.168.100.0---
----192.168.200.0---
-ipaddress: 192.168.200.1/24
-   故障開始時間   ｜   故障終了時間
-2020-10-30 20:59:21| None
----192.168.255.0---
----192.168.252.0---
-ipaddress: 192.168.255.1/22
-   故障開始時間   ｜   故障終了時間
-2020-10-30 21:59:41| 2020-10-30 21:59:44
-2020-10-30 21:59:42| 2020-10-30 21:59:44
-2020-10-30 21:59:43| 2020-10-30 21:59:44
-ipaddress: 192.168.255.20/22
-   故障開始時間   ｜   故障終了時間
-2020-12-01 11:11:13| None
-2020-12-01 11:11:14| None
-2020-12-01 11:11:15| None
+---サブネットの故障期間を表示---
+復旧済: サブネット(10.20.0.0) は 2020-10-19 13:33:30 から0:00:13の時間、故障していました。
+復旧済: サブネット(10.20.0.0) は 2021-10-19 13:33:50 から0:00:07の時間、故障していました。
+故障中: サブネット(192.168.100.0) は 2020-10-30 09:45:21 から ping が timeout です。
+復旧済: サブネット(192.168.200.0) は 2020-10-30 20:45:21 から0:07:10の時間、故障していました。
+故障中: サブネット(192.168.200.0) は 2020-10-30 20:55:21 から ping が timeout です。
+復旧済: サブネット(192.168.255.0) は 2020-10-30 21:59:21 から0:00:11の時間、故障していました。
+```
+
+#### 各サブネット毎の過負荷状態一覧
+
+各サブネット毎の過負荷状態を表示する。
+
+```python
+  print("---サブネットの過負荷状態を表示---")
+  last_overload = 2 # 直近 last_overload 回の平均応答時間を取得
+  mtime_overload = 50 # 平均応答時間が mtime_overload ミリ秒以上となった場合、過負荷状態
+  for network_address, subnet in subnets.items():
+    subnet.show_period_subnet_overload(last_overload, mtime_overload)
+```
+
+出力
+
+```
+---サブネットの過負荷状態を表示---
+解決済: サブネット(10.20.0.0) は 2021-10-19 13:33:58 から 0:03:47 の時間、過負荷状態でした。
+未解決: サブネット(10.20.0.0) は 2021-10-19 13:38:57 から過負荷状態です。
 ```
 
 ### 実行時のオプション
@@ -213,27 +248,6 @@ IS_VISUABLE_MISS_FORMAT = True
 -9999 は適切な形式ではありません。
 ```
 
-#### 過負荷状態の検出の際に直近の ping 回数が少ない場合
-
-直近 m 回の平均応答時間を求める際に、ping が n(< m) 回の場合、以下のオプションを True にすることで直近 n 回の平均応答時間を求める。
-
-例）
-
-直近 5 回の平均応答時間を求めたい。
-
-しかし、A サーバは ping は 3 回しか通っていない。
-
-DO_LESS_LAST_OVERLOAD を True にすると、A サーバは直近 3 回の平均応答時間を求める。
-
-DO_LESS_LAST_OVERLOAD を False にすると、A サーバは直近 3 回しか ping が通っていないため、平均応答時間を求めない。
-
-```python
-# DO_LESS_LAST_OVERLOAD
-# True: 直近のping回数が少なくても合わせて実行
-# False: 直近のping回数が少ない場合、過負荷状態を検出しない
-DO_LESS_LAST_OVERLOAD = False
-```
-
 ## Log クラス
 
 ### インスタンス変数
@@ -264,19 +278,38 @@ False : タイムアウトしていない
 
 ## LogCollection クラス
 
-Log クラス扱うためのクラス
+Log クラスをまとめたクラス
 
-### show_errors 関数
+## LogServer クラス
 
-各サーバの故障一覧及び故障期間を表示する関数
+Log をサーバ毎にまとめるクラス
 
-### show_overload 関数
+```python
+# LogServer is log collection per ipaddress
+# ---constract---
+# [Log, Log, Log, ...]
+# ---instance variables---
+# self.ipaddress
+# is recognized where server's Log.
+#
+# self.period_server_error
+# is list of datetime of start_error and end_error
+# [[dt_start_error, dt_end_error], [dt_start_error, dt_end_error], ... ]
+# [[1回目の故障期間], [2回目の故障期間], ...]
+```
 
-各サーバの過負荷状態を表示する関数
+## LogSubnet クラス
 
-### show_subnet_error 関数
+Log をサブネット毎にまとめるクラス
 
-各サブネットの故障一覧及び故障期間を表示する関数
+```python
+# ---constract---
+# {network_address: [Log, Log, Log, ...],
+# network_address: [Log, Log, Log, ...]}
+# ex)
+# {'192.168.255.1/22': [Log, Log, Log, ...],
+# '192.168.255.20/22': [Log, Log, Log, ...]}
+```
 
 ## テストデータ
 
