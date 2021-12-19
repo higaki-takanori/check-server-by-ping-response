@@ -28,35 +28,24 @@ if __name__ == '__main__':
   subnets = logs.get_subnets()
 
   print("---サーバの故障一覧を表示---")
-  continue_timeout_error = 2
+  continue_timeout_error = 2  # continue_timeout_error 回 timeout が連続すれば、故障とする
   for ipaddress, server in servers.items():
     server.show_period_server_error(continue_timeout_error)
 
   print("---サーバの過負荷状態を表示---")
-  last_overload = 2
-  mtime_overload = 50
+  last_overload = 2 # 直近 last_overload 回の平均応答時間を取得
+  mtime_overload = 50 # 平均応答時間が mtime_overload ミリ秒以上となった場合、過負荷状態
   for ipaddress, server in servers.items():
     server.show_period_server_overload(last_overload, mtime_overload)
 
   print("---サブネットの故障期間を表示---")
+  continue_timeout_error = 1  # continue_timeout_error 回 timeout が連続すれば、故障とする
   for network_address, subnet in subnets.items():
-    subnet.show_period_subnet_error()
+    subnet.show_period_subnet_error(continue_timeout_error)
 
 
   print("---サブネットの過負荷状態を表示---")
-  # for network_address, subnet in subnets.items():
-  #   print(f"--- network_address: {network_address} ---")
-  #   for ipaddress, server in subnet.items():
-  #     print(ipaddress)
-  #     for log in server:
-  #       print(log.datetime, log.ipaddress, log.restime)
-
-
-  # conti_timeout_error = 2 # conti_timeout_error 回 timeout が連続すれば、故障とする
-  # logs.show_errors(conti_timeout_error)
-
-  # last_overload = 2 # 直近 last_overload 回の平均応答時間を取得
-  # mtime_overload = 50 # 平均応答時間が mtime_overload ミリ秒以上となった場合、過負荷状態
-  # logs.show_overload(last_overload, mtime_overload, DO_LESS_LAST_OVERLOAD)
-
-  # logs.show_subnet_error(conti_timeout_error)
+  last_overload = 2 # 直近 last_overload 回の平均応答時間を取得
+  mtime_overload = 50 # 平均応答時間が mtime_overload ミリ秒以上となった場合、過負荷状態
+  for network_address, subnet in subnets.items():
+    subnet.show_period_subnet_overload(last_overload, mtime_overload)
